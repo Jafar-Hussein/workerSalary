@@ -23,6 +23,7 @@ public class Salary {
     private Employee employee;
     @Convert(converter = YearMonthStringConverter.class)
     private YearMonth month;
+    private Integer workedHours;
     private BigDecimal totalSalary;
     private BigDecimal hourlyRate;
 }

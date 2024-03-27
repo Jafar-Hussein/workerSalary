@@ -1,17 +1,14 @@
-package com.example.examen.dto;
+package com.example.examen.adminDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class EmployeeDTO {
-    private Long id;
+public class AdminEmployeeDTO {
     private String firstName;
     private String lastName;
     private String email;
@@ -19,4 +16,5 @@ public class EmployeeDTO {
     private String address;
     private String city;
     private String jobTitle;
+    private BigDecimal hourlyRate;
 }
