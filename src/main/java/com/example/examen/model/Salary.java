@@ -1,5 +1,6 @@
 package com.example.examen.model;
 
+import com.example.examen.converter.YearMonthStringConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,7 +21,7 @@ public class Salary {
     @OneToOne
     @JoinColumn(name = "employee_id")
     private Employee employee;
-
+    @Convert(converter = YearMonthStringConverter.class)
     private YearMonth month;
     private BigDecimal totalSalary;
     private BigDecimal hourlyRate;

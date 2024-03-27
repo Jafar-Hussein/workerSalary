@@ -1,5 +1,6 @@
 package com.example.examen.config;
 
+import com.example.examen.util.KeyProperties;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
