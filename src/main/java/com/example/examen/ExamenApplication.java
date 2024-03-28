@@ -1,13 +1,11 @@
 package com.example.examen;
 
 import com.example.examen.dto.EmployeeDTO;
-import com.example.examen.model.Employee;
-import com.example.examen.model.Roles;
-import com.example.examen.model.Salary;
-import com.example.examen.model.User;
+import com.example.examen.model.*;
 import com.example.examen.repo.EmployeeRepo;
 import com.example.examen.repo.SalaryRepo;
 import com.example.examen.repo.UserRepo;
+import com.example.examen.service.CheckInService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -59,8 +57,6 @@ public class ExamenApplication {
 			salary.setTotalSalary(BigDecimal.valueOf(0));
 			salaryRepo.save(salary);
 		};
-
-
 
 		};
 	}

@@ -11,11 +11,12 @@ import com.example.examen.repo.EmployeeRepo;
 import com.example.examen.repo.SalaryRepo;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import java.util.Comparator;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
@@ -62,15 +63,28 @@ public class SalaryService {
     }
 
     private BigDecimal calculateWorkedHours(Long employeeId, YearMonth month) {
-        // This logic assumes each check-in has a corresponding check-out; adjust as necessary for your logic
-        List<CheckIn> checkIns = checkInRepo.findAllByEmployeeIdAndMonth(employeeId, month);
-        List<CheckOut> checkOuts = checkOutRepo.findAllByEmployeeIdAndMonth(employeeId, month);
+        LocalDate startOfMonth = month.atDay(1);
+        LocalDate endOfMonth = month.atEndOfMonth();
 
+        LocalDateTime startDateTime = startOfMonth.atStartOfDay();
+        LocalDateTime endDateTime = endOfMonth.atTime(23, 59, 59);
+
+        List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
+        List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateBetween(employeeId, startDateTime, endDateTime);
+
+        // Assuming there is exactly one CheckOut for each CheckIn
         BigDecimal totalHours = BigDecimal.ZERO;
-        for (int i = 0; i < checkIns.size(); i++) {
-            LocalDateTime checkInTime = checkIns.get(i).getCheckInDateTime();
-            LocalDateTime checkOutTime = checkOuts.get(i).getCheckOutDate();
-            totalHours = totalHours.add(BigDecimal.valueOf(Duration.between(checkInTime, checkOutTime).toHours()));
+
+        for (CheckIn checkIn : checkIns) {
+            CheckOut correspondingCheckOut = checkOuts.stream()
+                    .filter(co -> co.getEmployee().getId().equals(checkIn.getEmployee().getId()) && !co.getCheckOutDate().isBefore(checkIn.getCheckInDateTime()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (correspondingCheckOut != null) {
+                long hours = Duration.between(checkIn.getCheckInDateTime(), correspondingCheckOut.getCheckOutDate()).toHours();
+                totalHours = totalHours.add(BigDecimal.valueOf(hours));
+            }
         }
 
         return totalHours;

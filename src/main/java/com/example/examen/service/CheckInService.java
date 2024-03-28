@@ -36,22 +36,25 @@ public class CheckInService {
     // Method to get all employee names and check-in comments
     // for the admin dashboard
     public List<CheckInInfoDTO> getAllEmployeeCheckIns() {
-        List<CheckIn> checkIns = checkInRepo.findAll(); // Assumes you want to get all check-ins
+        List<CheckIn> checkIns = checkInRepo.findAll();
 
-        List<CheckInInfoDTO> checkInInfoDTOS = checkIns.stream().map(checkIn -> {
+        return checkIns.stream().map(checkIn -> {
             CheckInInfoDTO dto = new CheckInInfoDTO();
             String fullName = checkIn.getEmployee().getFirstName() + " " + checkIn.getEmployee().getLastName();
             dto.setEmployeeName(fullName);
             dto.setCheckInTime(checkIn.getCheckInDateTime());
             return dto;
         }).collect(Collectors.toList());
-
-        return checkInInfoDTOS;
     }
 
     //user
-    public List<CheckIn> getCheckInsByEmployeeId(Long employeeId) {
-        return checkInRepo.findAllByEmployeeId(employeeId);
+    public List<CheckIn> getCheckInsByEmployeeId() {
+        User currentUser = userService.getCurrentUser();
+        if (currentUser != null && currentUser.getEmployee() != null) {
+            return checkInRepo.findAllByEmployeeId(currentUser.getEmployee().getId());
+        } else {
+            throw new IllegalArgumentException("User or associated employee not found");
+        }
     }
     @Transactional
     public CheckIn adjustCheckInTime(Long checkInId, CheckInAdjustmentDTO adjustmentDTO) {
@@ -59,8 +62,6 @@ public class CheckInService {
         CheckIn checkIn = checkInRepo.findById(checkInId)
                 .orElseThrow(() -> new IllegalArgumentException("CheckIn not found with id: " + checkInId));
 
-        // Assuming the current user is allowed to adjust their check-in time
-        // or you have additional checks for admin users
         if (checkIn.getEmployee().getUser().equals(currentUser)) {
             checkIn.setCheckInDateTime(adjustmentDTO.getNewCheckInDateTime());
             return checkInRepo.save(checkIn);
