@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface CheckInRepo extends JpaRepository<CheckIn, Long> {
     List<CheckIn> findAllByEmployeeIdAndMonth(Long employeeId, YearMonth month);
+
+    List<CheckIn> findAllByEmployeeId(Long id);
 }
