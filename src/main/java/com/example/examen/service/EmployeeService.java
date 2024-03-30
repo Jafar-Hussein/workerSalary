@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,13 +148,26 @@ public class EmployeeService {
 
 
     // for admin
-    public ResponseEntity<?> deleteEmployeeInfo(Long id) {
-        if (!employeeRepo.existsById(id)) {
-            return ResponseEntity.badRequest().body("Employee not found with id " + id);
+    public ResponseEntity<?> deleteEmployeeAndUser(Long employeeId) {
+        // Attempt to find the employee by ID
+        Optional<Employee> employeeOpt = employeeRepo.findById(employeeId);
+        if (employeeOpt.isPresent()) {
+            Employee employee = employeeOpt.get();
+            User user = employee.getUser();
+            if (user != null) {
+                // Delete the employee. The employee entity should not have any non-nullable foreign keys preventing deletion.
+                employeeRepo.delete(employee);
+                // Delete the user associated with the employee.
+                userRepo.delete(user);
+                return ResponseEntity.ok().body("Employee and associated user deleted successfully.");
+            } else {
+                return ResponseEntity.badRequest().body("No user associated with this employee.");
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Employee not found.");
         }
-        employeeRepo.deleteById(id);
-        return ResponseEntity.ok("Employee info deleted successfully");
     }
+
     private Employee convertDtoToEntity(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
         employee.setFirstName(employeeDTO.getFirstName());

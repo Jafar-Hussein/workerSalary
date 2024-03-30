@@ -51,4 +51,9 @@ public class EmployeeController {
         return employeeService.updateEmployeeInfoByAdmin(id,adminEmployeeDTO);
     }
 
+    @DeleteMapping("delete/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteEmployee(@PathVariable Long id){
+        return employeeService.deleteEmployeeAndUser(id);
+    }
 }

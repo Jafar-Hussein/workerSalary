@@ -18,8 +18,7 @@ public class User implements UserDetails {
     private String username;
     private String password;
     private Roles role;
-    @OneToOne
-    @JoinColumn(name = "employee_id")
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Employee employee;
     @Override
     public String getUsername() {
