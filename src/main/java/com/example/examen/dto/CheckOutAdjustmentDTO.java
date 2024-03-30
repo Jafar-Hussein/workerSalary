@@ -9,6 +9,6 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CheckOutDTO {
-    private LocalDateTime checkOutDateTime;
+public class CheckOutAdjustmentDTO {
+    private LocalDateTime newCheckOutDateTime;
 }

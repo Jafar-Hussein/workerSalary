@@ -34,6 +34,6 @@ public class Employee {
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
     private List<CheckOut> checkOuts;
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL)
-    private Salary salary;
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
+    private List<Salary> salaries;
 }

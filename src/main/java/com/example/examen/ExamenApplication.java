@@ -54,7 +54,8 @@ public class ExamenApplication {
 			salary.setEmployee(adminEmployee);
 			salary.setMonth(YearMonth.now());
 			salary.setHourlyRate(BigDecimal.valueOf(2000.00));
-			salary.setTotalSalary(BigDecimal.valueOf(0));
+			salary.setWorkedHours(2);
+			salary.setTotalSalary(BigDecimal.valueOf(salary.getWorkedHours()).multiply(salary.getHourlyRate()));
 			salaryRepo.save(salary);
 		};
 
