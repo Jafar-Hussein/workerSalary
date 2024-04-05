@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/check-in")
 @RequiredArgsConstructor
+@CrossOrigin(origins= "*")
 public class CheckInController {
     private final CheckInService checkInService;
     private final UserService userService;

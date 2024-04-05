@@ -17,4 +17,5 @@ public interface SalaryRepo extends JpaRepository<Salary, Long> {
     List<Salary> findAllByEmployee(Employee employee);
 
 
+    Optional<Salary> findTopByEmployeeIdOrderByMonthDesc(Long employeeId);
 }

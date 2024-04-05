@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/check-out")
 @RequiredArgsConstructor
+@CrossOrigin(origins= "*")
 public class CheckOutController {
     private final CheckoutService checkOutService;
     private final UserService userService;

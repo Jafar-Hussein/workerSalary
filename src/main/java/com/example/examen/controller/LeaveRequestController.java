@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/leave-request/")
 @RequiredArgsConstructor
+@CrossOrigin(origins= "*")
 public class LeaveRequestController {
     private final LeaveRequestService leaveRequestService;
     private final UserService userService;

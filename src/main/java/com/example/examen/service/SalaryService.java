@@ -148,21 +148,23 @@ public class SalaryService {
 
 
     public Salary findOrCreateSalaryByEmployeeIdAndMonth(Long employeeId, YearMonth month) {
-        Optional<Salary> existingSalary = salaryRepo.findByEmployeeIdAndMonth(employeeId, month);
-        if (existingSalary.isPresent()) {
-            return existingSalary.get();
-        } else {
-            System.out.println("Creating new salary record for employeeId: " + employeeId + ", Month: " + month);
-            Employee employee = employeeRepo.findById(employeeId)
-                    .orElseThrow(() -> new IllegalArgumentException("Employee not found with id: " + employeeId));
-            Salary newSalary = new Salary();
-            newSalary.setEmployee(employee);
-            newSalary.setMonth(month);
-            newSalary.setWorkedHours(0);
-            newSalary.setHourlyRate(BigDecimal.ZERO); // This is a fallback, ideally should be set immediately after creation
-            return salaryRepo.save(newSalary);
-        }
+        return salaryRepo.findByEmployeeIdAndMonth(employeeId, month)
+                .orElseGet(() -> {
+                    Employee employee = employeeRepo.findById(employeeId)
+                            .orElseThrow(() -> new IllegalArgumentException("Employee not found with id: " + employeeId));
+                    // Fetch the most recent salary record for the employee to get the latest hourly rate
+                    Salary mostRecentSalary = salaryRepo.findTopByEmployeeIdOrderByMonthDesc(employeeId).orElse(null);
+                    BigDecimal lastHourlyRate = (mostRecentSalary != null) ? mostRecentSalary.getHourlyRate() : BigDecimal.ZERO; // Fallback to ZERO if no records are found
+
+                    Salary newSalary = new Salary();
+                    newSalary.setEmployee(employee);
+                    newSalary.setMonth(month);
+                    newSalary.setWorkedHours(0);
+                    newSalary.setHourlyRate(lastHourlyRate); // Use the last known hourly rate
+                    return salaryRepo.save(newSalary);
+                });
     }
+
 
 
 
