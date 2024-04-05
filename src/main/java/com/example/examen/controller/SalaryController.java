@@ -14,7 +14,7 @@ import java.time.YearMonth;
 
 @RestController
 @RequestMapping("/salary/")
-@RequiredArgsConstructorg
+@RequiredArgsConstructor
 @CrossOrigin(origins= "*")
 public class SalaryController {
     private final SalaryService salaryService;
