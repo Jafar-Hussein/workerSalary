@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AdminEmployeeDTO {
+    private Long id;
     private String firstName;
     private String lastName;
     private String email;

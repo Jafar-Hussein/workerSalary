@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -83,9 +84,13 @@ public class EmployeeService {
 
         // Convert each employee entity to an AdminEmployeeDTO
         List<AdminEmployeeDTO> adminEmployeeDTOs = employees.stream()
-                .map(employee -> modelMapper.map(employee, AdminEmployeeDTO.class))
+                .map(employee -> {
+                    AdminEmployeeDTO dto = modelMapper.map(employee, AdminEmployeeDTO.class);
+                    BigDecimal hourlyRate = employee.getSalaries().isEmpty() ? null : employee.getSalaries().get(0).getHourlyRate();
+                    dto.setHourlyRate(hourlyRate);
+                    return dto;
+                })
                 .collect(Collectors.toList());
-
         // Return the list of AdminEmployeeDTOs
         return ResponseEntity.ok(adminEmployeeDTOs);
     }
