@@ -10,7 +10,9 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LeaveRequestDTO {
+    Long id;
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
+    private String employeeName;
 }

@@ -10,5 +10,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CheckInDTO {
+    private Long id;
     private LocalDateTime checkInDate;
 }

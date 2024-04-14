@@ -2,9 +2,11 @@ package com.example.examen.controller;
 
 import com.example.examen.dto.LeaveRequestDTO;
 import com.example.examen.model.LeaveRequest;
+import com.example.examen.model.User;
 import com.example.examen.service.LeaveRequestService;
 import com.example.examen.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -40,15 +42,22 @@ public class LeaveRequestController {
     @GetMapping("all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAllLeaveRequests() {
-        Iterable<LeaveRequest> leaveRequests = leaveRequestService.getAllLeaveRequests();
+        Iterable<LeaveRequestDTO> leaveRequests = leaveRequestService.getAllLeaveRequests();
         return ResponseEntity.ok(leaveRequests);
     }
 
-    @GetMapping("employee/{employeeId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getLeaveRequestsByEmployeeId(@PathVariable Long employeeId) {
-        Iterable<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsByEmployeeId(employeeId);
-        return ResponseEntity.ok(leaveRequests);
+    @GetMapping("employee")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    public ResponseEntity<?> getLeaveRequestsByEmployeeId(){
+        User currentUser = userService.getCurrentUser();
+        if (currentUser == null || currentUser.getEmployee() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found or not logged in.");
+        }
+
+        Long id = currentUser.getEmployee().getId();
+        Iterable<LeaveRequestDTO> leaveRequestDTOs = leaveRequestService.getLeaveRequestsByEmployeeId(id);
+        return ResponseEntity.ok(leaveRequestDTOs);
     }
+
 }
 

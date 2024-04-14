@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class LeaveRequestService {
@@ -23,8 +26,11 @@ public class LeaveRequestService {
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setStartDate(leaveRequestDTO.getStartDate());
         leaveRequest.setEndDate(leaveRequestDTO.getEndDate());
-        leaveRequest.setStatus("PENDING"); // Default status
+        leaveRequest.setStatus("PENDING");
         leaveRequest.setEmployee(employee);
+
+        // Set the employee's name in the leave request here
+        leaveRequestDTO.setEmployeeName(employee.getFirstName() + " " + employee.getLastName());
 
         return leaveRequestRepo.save(leaveRequest);
     }
@@ -48,14 +54,44 @@ public class LeaveRequestService {
         return leaveRequestRepo.save(leaveRequest);
     }
 
-    public Iterable<LeaveRequest> getAllLeaveRequests() {
-        return leaveRequestRepo.findAll();
+    public Iterable<LeaveRequestDTO> getAllLeaveRequests() {
+        return leaveRequestRepo.findAll().stream()
+                .map(leaveRequest -> {
+                    LeaveRequestDTO leaveRequestDTO = new LeaveRequestDTO();
+                    leaveRequestDTO.setId(leaveRequest.getId());
+                    leaveRequestDTO.setStartDate(leaveRequest.getStartDate());
+                    leaveRequestDTO.setEndDate(leaveRequest.getEndDate());
+                    leaveRequestDTO.setStatus(leaveRequest.getStatus());
+                    // Make sure the employee field is not null to avoid NullPointerException
+                    if (leaveRequest.getEmployee() != null) {
+                        leaveRequestDTO.setEmployeeName(leaveRequest.getEmployee().getFirstName() + " " + leaveRequest.getEmployee().getLastName());
+                    }
+                    return leaveRequestDTO;
+                })
+                .collect(Collectors.toList());
     }
 
-    public Iterable<LeaveRequest> getLeaveRequestsByEmployeeId(Long employeeId) {
+    public Iterable<LeaveRequestDTO> getLeaveRequestsByEmployeeId(Long employeeId) {
         if (employeeId == null) {
             throw new IllegalArgumentException("Employee ID is required");
         }
-        return leaveRequestRepo.findByEmployeeId(employeeId);
+
+        // Assuming findByEmployeeId returns List<LeaveRequest>
+        List<LeaveRequest> leaveRequests = leaveRequestRepo.findByEmployeeId(employeeId);
+
+        // Convert each LeaveRequest entity to LeaveRequestDTO
+        List<LeaveRequestDTO> leaveRequestDTOs = leaveRequests.stream().map(leaveRequest -> {
+            LeaveRequestDTO dto = new LeaveRequestDTO();
+            dto.setId(leaveRequest.getId());
+            dto.setStartDate(leaveRequest.getStartDate());
+            dto.setEndDate(leaveRequest.getEndDate());
+            dto.setStatus(leaveRequest.getStatus());
+            // and so on for the other fields
+            // ...
+            return dto;
+        }).collect(Collectors.toList());
+
+        return leaveRequestDTOs; // This is now the correct type
     }
+
 }

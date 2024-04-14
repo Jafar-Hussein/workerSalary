@@ -40,8 +40,12 @@ public class CheckInController {
         if (userService.getCurrentUser() == null) {
             return ResponseEntity.badRequest().body("User not found");
         }
+        if (adjustmentDTO.getNewCheckInDateTime() == null) {
+            return ResponseEntity.badRequest().body("New Check-In date-time is not provided");
+        }
         checkInService.adjustCheckInTime(checkInId, adjustmentDTO);
         return ResponseEntity.ok("Check-in time adjusted successfully");
     }
+
 
 }

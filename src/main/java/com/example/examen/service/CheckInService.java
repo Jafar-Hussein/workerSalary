@@ -2,7 +2,9 @@ package com.example.examen.service;
 
 import com.example.examen.adminDTO.CheckInInfoDTO;
 import com.example.examen.dto.CheckInAdjustmentDTO;
+import com.example.examen.dto.CheckInDTO;
 import com.example.examen.dto.CheckOutAdjustmentDTO;
+import com.example.examen.dto.CheckOutDTO;
 import com.example.examen.model.CheckIn;
 import com.example.examen.model.CheckOut;
 import com.example.examen.model.Roles;
@@ -12,6 +14,8 @@ import com.example.examen.repo.CheckOutRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -55,13 +59,16 @@ public class CheckInService {
     }
 
     //user
-    public List<CheckIn> getCheckInsByEmployeeId() {
-        User currentUser = userService.getCurrentUser();
-        if (currentUser != null && currentUser.getEmployee() != null) {
-            return checkInRepo.findAllByEmployeeId(currentUser.getEmployee().getId());
+    public List<CheckInDTO> getCheckInsByEmployeeId() {
+        User user = userService.getCurrentUser();
+        if (user != null && user.getEmployee() != null) {
+            return checkInRepo.findAllByEmployeeId(user.getEmployee().getId()).stream()
+                    .map(checkIn -> new CheckInDTO(checkIn.getId(), checkIn.getCheckInDateTime()))
+                    .collect(Collectors.toList());
         } else {
             throw new IllegalArgumentException("User or associated employee not found");
         }
+
     }
     @Transactional
     public CheckIn adjustCheckInTime(Long checkInId, CheckInAdjustmentDTO adjustmentDTO) {
@@ -70,17 +77,20 @@ public class CheckInService {
                 .orElseThrow(() -> new IllegalArgumentException("CheckIn not found with id: " + checkInId));
 
         if (checkIn.getEmployee().getUser().equals(currentUser) || currentUser.getRole().equals(Roles.ADMIN)) {
-            checkIn.setCheckInDateTime(adjustmentDTO.getNewCheckInDateTime());
+            LocalDateTime newCheckInDateTime = adjustmentDTO.getNewCheckInDateTime();
+
+            // Update check-in time
+            checkIn.setCheckInDateTime(newCheckInDateTime);
             checkInRepo.save(checkIn);
 
-            // Attempt to find the next checkout after the adjusted check-in time
+            // Find the corresponding check-out after the adjusted check-in
             Optional<CheckOut> nextCheckOut = checkOutRepo.findFirstByEmployeeIdAndCheckOutDateTimeAfterOrderByCheckOutDateTimeAsc(
-                    checkIn.getEmployee().getId(), adjustmentDTO.getNewCheckInDateTime());
+                    checkIn.getEmployee().getId(), newCheckInDateTime);
 
             if (nextCheckOut.isPresent()) {
                 // A corresponding checkout is found, so proceed with salary calculation
                 LocalDateTime nextCheckOutTime = nextCheckOut.get().getCheckOutDateTime();
-                salaryService.updateWorkedHoursAndRecalculateSalary(checkIn.getEmployee().getId(), adjustmentDTO.getNewCheckInDateTime(), nextCheckOutTime);
+                salaryService.updateWorkedHoursAndRecalculateSalary(checkIn.getEmployee().getId(), newCheckInDateTime, nextCheckOutTime);
             } else {
                 // No corresponding checkout found. Handle accordingly.
                 // For example, log this information or throw a custom exception if needed.
@@ -93,5 +103,7 @@ public class CheckInService {
             throw new IllegalStateException("Unauthorized to adjust this check-in");
         }
     }
+
+
 
 }

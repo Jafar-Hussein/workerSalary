@@ -13,6 +13,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
@@ -96,21 +97,28 @@ public class EmployeeService {
     }
 
   // employee update their own info
-  public ResponseEntity<?> updateEmployeeInfo(EmployeeDTO employeeDTO) {
-      User user = userService.getCurrentUser();
-      if (user == null) {
-          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found or not logged in.");
-      }
+// employee update their own info
 
-      Employee employee = user.getEmployee();
-      if (employee == null) {
-          return ResponseEntity.badRequest().body("Current user does not have associated employee information.");
-      }
+    public ResponseEntity<?> updateEmployeeInfo(EmployeeDTO employeeDTO) {
+        User user = userService.getCurrentUser();
+        Employee existingEmployee = user.getEmployee();
+        if (existingEmployee == null) {
+            throw new RuntimeException("No employee information found for current user");
+        }
 
-      modelMapper.map(employeeDTO, employee);
-      Employee updatedEmployee = employeeRepo.save(employee);
-      return ResponseEntity.ok(updatedEmployee);
-  }
+        // Here we ensure the model mapper does not map the id field
+        modelMapper.typeMap(EmployeeDTO.class, Employee.class)
+                .addMappings(mapper -> mapper.skip(Employee::setId));
+
+        // Perform the mapping, excluding the ID
+        modelMapper.map(employeeDTO, existingEmployee);
+
+        // Save the updated employee entity
+        Employee updatedEmployee = employeeRepo.save(existingEmployee);
+        return ResponseEntity.ok(updatedEmployee);
+    }
+
+
     // for admin
     // for admin
     public ResponseEntity<?> updateEmployeeInfoByAdmin(Long id, AdminEmployeeDTO adminEmployeeDTO) {
