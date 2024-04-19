@@ -14,8 +14,6 @@
 	<name>examen</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
 		<java.version>17</java.version>
 	</properties>
 
@@ -80,11 +78,13 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version> <!-- Ensure using a recent version -->
 				<configuration>
-					<source>3.0.0</source>
-					<target>3.0.0</target>
+					<source>17</source> <!-- Set Java source compatibility -->
+					<target>17</target> <!-- Set Java target compatibility -->
 				</configuration>
 			</plugin>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
