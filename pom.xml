@@ -76,7 +76,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>payroll</finalName>
+		<finalName>PayRollManagment</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
