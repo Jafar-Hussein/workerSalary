@@ -76,32 +76,16 @@ public class CheckInService {
         CheckIn checkIn = checkInRepo.findById(checkInId)
                 .orElseThrow(() -> new IllegalArgumentException("CheckIn not found with id: " + checkInId));
 
-        if (checkIn.getEmployee().getUser().equals(currentUser) || currentUser.getRole().equals(Roles.ADMIN)) {
-            LocalDateTime newCheckInDateTime = adjustmentDTO.getNewCheckInDateTime();
-
-            // Update check-in time
-            checkIn.setCheckInDateTime(newCheckInDateTime);
+        if (currentUser.isCheckInAdjustmentAllowed(checkIn)) {
+            checkIn.setCheckInDateTime(adjustmentDTO.getNewCheckInDateTime());
             checkInRepo.save(checkIn);
 
-            // Find the corresponding check-out after the adjusted check-in
-            Optional<CheckOut> nextCheckOut = checkOutRepo.findFirstByEmployeeIdAndCheckOutDateTimeAfterOrderByCheckOutDateTimeAsc(
-                    checkIn.getEmployee().getId(), newCheckInDateTime);
-
-            if (nextCheckOut.isPresent()) {
-                // A corresponding checkout is found, so proceed with salary calculation
-                LocalDateTime nextCheckOutTime = nextCheckOut.get().getCheckOutDateTime();
-                salaryService.updateWorkedHoursAndRecalculateSalary(checkIn.getEmployee().getId(), newCheckInDateTime, nextCheckOutTime);
-            } else {
-                // No corresponding checkout found. Handle accordingly.
-                // For example, log this information or throw a custom exception if needed.
-                System.out.println("No corresponding checkout found for the adjusted check-in for employeeId: " + checkIn.getEmployee().getId());
-                // Depending on business logic, you might want to perform different actions here.
-            }
-
-            return checkIn;
+            // Call the updated method without date-time parameters
+            salaryService.updateWorkedHoursAndRecalculateSalary(checkIn.getEmployee().getId());
         } else {
             throw new IllegalStateException("Unauthorized to adjust this check-in");
         }
+        return checkIn;
     }
 
 

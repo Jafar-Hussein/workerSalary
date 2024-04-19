@@ -9,6 +9,7 @@ import com.example.examen.model.User;
 import com.example.examen.repo.CheckInRepo;
 import com.example.examen.repo.CheckOutRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class CheckoutService {
     private final UserService userService;
     private final EmployeeService employeeService;
     private final CheckInRepo checkInRepo;
+    @Autowired
     private final SalaryService salaryService;
 
     //check out
@@ -39,20 +41,13 @@ public class CheckoutService {
             checkOut.setCheckOutDateTime(now);
             checkOutRepo.save(checkOut);
 
-            Optional<CheckIn> lastCheckIn = checkInRepo.findFirstByEmployeeIdAndCheckInDateTimeBeforeOrderByCheckInDateTimeDesc(
-                    user.getEmployee().getId(), now);
-
-            if (lastCheckIn.isPresent()) {
-                LocalDateTime lastCheckInTime = lastCheckIn.get().getCheckInDateTime();
-                salaryService.updateWorkedHoursAndRecalculateSalary(user.getEmployee().getId(), lastCheckInTime, now);
-            } else {
-                // Handle cases where no corresponding check-in is found
-                // Maybe throw an exception or return a default value
-            }
+            // Now, just call the updated method without parameters
+            salaryService.updateWorkedHoursAndRecalculateSalary(user.getEmployee().getId());
         } else {
             throw new IllegalArgumentException("User or associated employee not found");
         }
     }
+
 
     // Method to get all employee names and check-in
     // for the admin dashboard
@@ -87,29 +82,15 @@ public class CheckoutService {
         CheckOut checkOut = checkOutRepo.findById(checkOutId)
                 .orElseThrow(() -> new IllegalArgumentException("Check-out not found with id: " + checkOutId));
 
-        if (checkOut.getEmployee().getUser().equals(currentUser) || currentUser.getRole().equals("ADMIN")) {
+        if (currentUser.isCheckOutAdjustmentAllowed(checkOut)) {
             checkOut.setCheckOutDateTime(adjustmentDTO.getNewCheckOutDateTime());
-            CheckOut updatedCheckOut = checkOutRepo.save(checkOut);
+            checkOutRepo.save(checkOut);
 
-            // Find the last check-in before the adjusted check-out
-            Optional<CheckIn> lastCheckIn = checkInRepo.findFirstByEmployeeIdAndCheckInDateTimeBeforeOrderByCheckInDateTimeDesc(
-                    checkOut.getEmployee().getId(), adjustmentDTO.getNewCheckOutDateTime());
-
-            if (lastCheckIn.isPresent()) {
-                LocalDateTime lastCheckInTime = lastCheckIn.get().getCheckInDateTime();
-                // Update worked hours and recalculate salary after adjusting check-out time
-                salaryService.updateWorkedHoursAndRecalculateSalary(checkOut.getEmployee().getId(), lastCheckInTime, adjustmentDTO.getNewCheckOutDateTime());
-            } else {
-                // Handle cases where no corresponding check-in is found
-                // This might involve logging a warning or throwing an exception, depending on your application's requirements
-                System.out.println("No corresponding check-in found for adjusted check-out");
-
-            }
-
-            return updatedCheckOut;
+            // Call the updated method without date-time parameters
+            salaryService.updateWorkedHoursAndRecalculateSalary(checkOut.getEmployee().getId());
         } else {
             throw new IllegalStateException("Unauthorized to adjust this check-out");
         }
+        return checkOut;
     }
-
 }

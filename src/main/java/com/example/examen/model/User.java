@@ -79,4 +79,14 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+
+    public boolean isCheckOutAdjustmentAllowed(CheckOut checkOut) {
+        // Allow the check-out adjustment if the user is a regular user or if the check-out belongs to the user or admin
+        return this.getRole().equals(Roles.USER) || checkOut.getEmployee().getUser().equals(this) || this.getRole().equals(Roles.ADMIN);
+    }
+
+    public boolean isCheckInAdjustmentAllowed(CheckIn checkIn) {
+        // Allow the check-in adjustment if the user is a regular user or if the check-in belongs to the user or admin
+        return this.getRole().equals(Roles.USER) || checkIn.getEmployee().getUser().equals(this) || this.getRole().equals(Roles.ADMIN);
+    }
 }
