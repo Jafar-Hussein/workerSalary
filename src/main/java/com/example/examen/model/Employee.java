@@ -24,7 +24,8 @@ public class Employee {
     private String address;
     private String city;
     private String jobTitle;
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
     private List<LeaveRequest> leaveRequests;
@@ -34,6 +35,6 @@ public class Employee {
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
     private List<CheckOut> checkOuts;
-    @OneToOne(mappedBy = "employee", cascade = CascadeType.ALL)
-    private Salary salary;
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL)
+    private List<Salary> salaries;
 }

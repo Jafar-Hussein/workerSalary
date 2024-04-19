@@ -10,5 +10,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CheckOutDTO {
-    private LocalDateTime checkOutDate;
+    private Long id;
+    private LocalDateTime checkOutDateTime;
 }

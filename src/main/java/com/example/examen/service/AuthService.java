@@ -18,7 +18,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private UserRepo userRepo;
+    private final UserRepo userRepo;
     private Roles role;
 
     private final PasswordEncoder passwordEncoder;

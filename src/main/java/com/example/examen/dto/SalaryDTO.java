@@ -12,6 +12,7 @@ import java.time.YearMonth;
 @NoArgsConstructor
 public class SalaryDTO {
     private YearMonth month;
+    private Integer workedHours;
     private BigDecimal totalSalary;
     private BigDecimal hourlyRate;
 }

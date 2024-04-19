@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CheckInDTO {
-    private Long id;
-    private LocalDateTime checkInDate;
+public class CheckInAdjustmentDTO {
+    private LocalDateTime newCheckInDateTime;
 }

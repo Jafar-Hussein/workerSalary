@@ -1,4 +1,4 @@
-package com.example.examen.dto;
+package com.example.examen.adminDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CheckInDTO {
-    private Long id;
-    private LocalDateTime checkInDate;
+public class CheckInInfoDTO {
+    private String employeeName;
+    private LocalDateTime checkInTime;
 }
