@@ -76,9 +76,12 @@ public class SalaryService {
         List<Salary> salaries = salaryRepo.findAllByEmployee(employee);
         return salaries.stream()
                 .map(this::mapSalaryToDTO)
-                .sorted(Comparator.comparing(SalaryDTO::getMonth).reversed())
+                .filter(dto -> dto.getMonth() != null)  // Filter out any DTOs with null months
+                .sorted(Comparator.comparing(SalaryDTO::getMonth, Comparator.nullsLast(YearMonth::compareTo)).reversed())
                 .collect(Collectors.toList());
     }
+
+
 
     private SalaryDTO mapSalaryToDTO(Salary salary) {
         SalaryDTO salaryDTO = new SalaryDTO();
