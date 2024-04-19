@@ -39,8 +39,8 @@ jobs:
       - name: Build with Maven
         run: mvn -B -e -X clean package --file pom.xml
         env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/examen
-          SPRING_DATASOURCE_USERNAME: root
+          SPRING_DATASOURCE_URL: jdbc:mysql://examendb.mysql.database.azure.com:3306/examen?useSSL=true&requireSSL=false
+          SPRING_DATASOURCE_USERNAME: root_jafar
           SPRING_DATASOURCE_PASSWORD: Jafar_Hussein332
 
   publish-job:
@@ -68,8 +68,8 @@ jobs:
           distribution: 'temurin'
       - run: mvn --batch-mode --update-snapshots verify
         env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/examen
-          SPRING_DATASOURCE_USERNAME: root
+          SPRING_DATASOURCE_URL: jdbc:mysql://examendb.mysql.database.azure.com:3306/examen?useSSL=true&requireSSL=false
+          SPRING_DATASOURCE_USERNAME: root_jafar
           SPRING_DATASOURCE_PASSWORD: Jafar_Hussein332
       - run: mkdir staging && cp target/*.jar staging
       - uses: actions/upload-artifact@v3
