@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,17 +32,23 @@ public class CheckInService {
     private final SalaryService salaryService;
 
     //check in
+    // In CheckInService class
     public void checkIn() {
         User user = userService.getCurrentUser();
         if (user != null && user.getEmployee() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            // Ensure a Salary entry for the new month exists before saving the check-in
+            salaryService.findOrCreateSalaryByEmployeeIdAndMonth(user.getEmployee().getId(), YearMonth.from(now));
+
             CheckIn checkIn = new CheckIn();
             checkIn.setEmployee(user.getEmployee());
-            checkIn.setCheckInDateTime(LocalDateTime.now()); // Set the check-in time to the current time
+            checkIn.setCheckInDateTime(now); // Set the check-in time to the current time
             checkInRepo.save(checkIn);
         } else {
             throw new IllegalArgumentException("User or associated employee not found");
         }
     }
+
 
 
     // Method to get all employee names and check-in comments

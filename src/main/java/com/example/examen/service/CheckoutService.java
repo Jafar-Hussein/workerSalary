@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,11 +32,15 @@ public class CheckoutService {
     private final SalaryService salaryService;
 
     //check out
+    // In CheckoutService class
     @Transactional
     public void checkOut() {
         User user = userService.getCurrentUser();
         if (user != null && user.getEmployee() != null) {
             LocalDateTime now = LocalDateTime.now();
+            // Ensure a Salary entry for the new month exists before saving the check-out
+            salaryService.findOrCreateSalaryByEmployeeIdAndMonth(user.getEmployee().getId(), YearMonth.from(now));
+
             CheckOut checkOut = new CheckOut();
             checkOut.setEmployee(user.getEmployee());
             checkOut.setCheckOutDateTime(now);
@@ -47,6 +52,7 @@ public class CheckoutService {
             throw new IllegalArgumentException("User or associated employee not found");
         }
     }
+
 
 
     // Method to get all employee names and check-in
