@@ -108,28 +108,27 @@ public class SalaryService {
         LocalDateTime endDateTime = LocalDateTime.now();
 
         // Find or create the salary record for the employee for the given month.
-        // This method will either find the existing record or create a new one if it doesn't exist.
         Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
 
         // Fetch check-ins and check-outs for the employee within the specified datetime range.
         List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
         List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
 
-        // Calculate the total worked hours based on the check-ins and check-outs.
+        // Assuming that checkIns and checkOuts are matched one-to-one by their indices
         BigDecimal totalWorkedHours = calculateTotalWorkedHours(checkIns, checkOuts);
 
-        // Calculate the total salary using the total worked hours and the hourly rate.
+        // Calculate the total salary
         BigDecimal hourlyRate = salary.getHourlyRate();
         BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
 
-        // Update the salary record with the calculated values.
+        // Update the salary record with the calculated total salary
         salary.setTotalSalary(totalSalary);
+
+        // Update the salary record with the calculated total worked hours
         salary.setWorkedHours(totalWorkedHours.intValue());
 
-        // Save the updated salary record.
         salaryRepo.save(salary);
     }
-
 
 
     private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
