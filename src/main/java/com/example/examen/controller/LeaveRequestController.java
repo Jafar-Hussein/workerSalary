@@ -46,7 +46,7 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequests);
     }
 
-    @GetMapping("employee")
+    @GetMapping("employee-request")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<?> getLeaveRequestsByEmployeeId(){
         User currentUser = userService.getCurrentUser();
