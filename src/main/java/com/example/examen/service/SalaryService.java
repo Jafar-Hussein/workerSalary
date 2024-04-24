@@ -128,54 +128,88 @@ public class SalaryService {
 //        salaryRepo.save(salary);
 //    }
 
-    @Transactional
-    public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
-        // Calculate from the start of the current month up to the last check-out before now
-        LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay();
-        LocalDateTime endDateTime = LocalDateTime.now();
+//    @Transactional
+//    public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
+//        // Calculate from the start of the current month up to the last check-out before now
+//        LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay();
+//        LocalDateTime endDateTime = LocalDateTime.now();
+//
+//        // Find or create the salary record for the employee for the given month.
+//        Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
+//
+//        // Fetch check-ins and check-outs for the employee within the specified datetime range.
+//        List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
+//        List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
+//
+//        // Ensure checkIns and checkOuts are sorted
+//        checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
+//        checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
+//
+//        BigDecimal totalWorkedHours = BigDecimal.ZERO;
+//        for (CheckIn checkIn : checkIns) {
+//            // Find corresponding check-out
+//            Optional<CheckOut> matchingCheckOut = checkOuts.stream()
+//                    .filter(co -> !co.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime()))
+//                    .findFirst();
+//
+//            if (matchingCheckOut.isPresent()) {
+//                // Calculate hours worked between the check-in and check-out
+//                BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(
+//                                checkIn.getCheckInDateTime(),
+//                                matchingCheckOut.get().getCheckOutDateTime()
+//                        ).toHours())
+//                        .setScale(2, RoundingMode.HALF_UP);
+//                totalWorkedHours = totalWorkedHours.add(hoursWorked);
+//
+//                // Remove the matched check-out to prevent reprocessing
+//                checkOuts.remove(matchingCheckOut.get());
+//            }
+//        }
+//
+//        // Calculate the total salary
+//        BigDecimal hourlyRate = salary.getHourlyRate();
+//        BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
+//
+//        // Update the salary record with the calculated total salary and worked hours
+//        salary.setTotalSalary(totalSalary);
+//        salary.setWorkedHours(totalWorkedHours.intValue());
+//
+//        salaryRepo.save(salary);
+//    }
+@Transactional
+public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
+    LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay();
+    LocalDateTime endDateTime = LocalDateTime.now();
+    Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
 
-        // Find or create the salary record for the employee for the given month.
-        Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
+    List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
+    List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
 
-        // Fetch check-ins and check-outs for the employee within the specified datetime range.
-        List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
-        List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
+    checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
+    checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
 
-        // Ensure checkIns and checkOuts are sorted
-        checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
-        checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
+    BigDecimal totalWorkedHours = BigDecimal.ZERO;
 
-        BigDecimal totalWorkedHours = BigDecimal.ZERO;
-        for (CheckIn checkIn : checkIns) {
-            // Find corresponding check-out
-            Optional<CheckOut> matchingCheckOut = checkOuts.stream()
-                    .filter(co -> !co.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime()))
-                    .findFirst();
+    for (CheckIn checkIn : checkIns) {
+        Optional<CheckOut> matchingCheckOut = checkOuts.stream()
+                .filter(co -> !co.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime()))
+                .findFirst();
 
-            if (matchingCheckOut.isPresent()) {
-                // Calculate hours worked between the check-in and check-out
-                BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(
-                                checkIn.getCheckInDateTime(),
-                                matchingCheckOut.get().getCheckOutDateTime()
-                        ).toHours())
-                        .setScale(2, RoundingMode.HALF_UP);
-                totalWorkedHours = totalWorkedHours.add(hoursWorked);
-
-                // Remove the matched check-out to prevent reprocessing
-                checkOuts.remove(matchingCheckOut.get());
-            }
+        if (matchingCheckOut.isPresent()) {
+            long minutesBetween = Duration.between(checkIn.getCheckInDateTime(), matchingCheckOut.get().getCheckOutDateTime()).toMinutes();
+            BigDecimal hoursWorked = BigDecimal.valueOf(minutesBetween).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            totalWorkedHours = totalWorkedHours.add(hoursWorked);
+            checkOuts.remove(matchingCheckOut.get());
         }
-
-        // Calculate the total salary
-        BigDecimal hourlyRate = salary.getHourlyRate();
-        BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
-
-        // Update the salary record with the calculated total salary and worked hours
-        salary.setTotalSalary(totalSalary);
-        salary.setWorkedHours(totalWorkedHours.intValue());
-
-        salaryRepo.save(salary);
     }
+
+    BigDecimal hourlyRate = salary.getHourlyRate();
+    BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
+    salary.setTotalSalary(totalSalary);
+    salary.setWorkedHours(totalWorkedHours.intValue());
+
+    salaryRepo.save(salary);
+}
 
 //    private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
 //        BigDecimal totalWorkedHours = BigDecimal.ZERO;
@@ -226,41 +260,35 @@ public class SalaryService {
         List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
         List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
 
-        // Ensure that checkIns and checkOuts are sorted by date and time
         checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
         checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
 
         BigDecimal totalWorkedHours = BigDecimal.ZERO;
         int checkOutIndex = 0;
-
-        // Use a map to keep track of matched check-outs to avoid re-matching
         Map<CheckOut, Boolean> matchedCheckOuts = new HashMap<>();
 
         for (CheckIn checkIn : checkIns) {
             LocalDateTime checkInTime = checkIn.getCheckInDateTime();
             BigDecimal hoursBetween = BigDecimal.ZERO;
 
-            // Find the next corresponding check-out that has not been matched yet
             while (checkOutIndex < checkOuts.size()) {
                 CheckOut checkOut = checkOuts.get(checkOutIndex);
                 LocalDateTime checkOutTime = checkOut.getCheckOutDateTime();
 
                 if (checkOutTime.isAfter(checkInTime) && !matchedCheckOuts.containsKey(checkOut)) {
-                    // Calculate hours between check-in and check-out
+                    // Use toMinutes() for a more precise duration calculation
                     hoursBetween = BigDecimal.valueOf(Duration.between(checkInTime, checkOutTime).toMinutes())
                             .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-                    // Mark this check-out as matched
                     matchedCheckOuts.put(checkOut, true);
-                    break; // Break out of the while loop once we find a match
+                    break;
                 }
-                checkOutIndex++; // Increment only if no match is found or if check-out is before check-in
+                checkOutIndex++;
             }
-
-            // Add the calculated hours to the total
             totalWorkedHours = totalWorkedHours.add(hoursBetween);
         }
         return totalWorkedHours;
     }
+
 
 
     public Salary findOrCreateSalaryByEmployeeIdAndMonth(Long employeeId, YearMonth month) {
