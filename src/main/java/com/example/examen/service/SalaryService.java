@@ -131,28 +131,50 @@ public class SalaryService {
     }
 
 
-    private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
-        BigDecimal totalWorkedHours = BigDecimal.ZERO;
-        for (int i = 0; i < checkIns.size(); i++) {
-            CheckIn checkIn = checkIns.get(i);
-            CheckOut checkOut = null;
+//    private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
+//        BigDecimal totalWorkedHours = BigDecimal.ZERO;
+//        for (int i = 0; i < checkIns.size(); i++) {
+//            CheckIn checkIn = checkIns.get(i);
+//            CheckOut checkOut = null;
+//
+//            // Find the first check-out after this check-in
+//            for (CheckOut out : checkOuts) {
+//                if (!out.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime())) {
+//                    checkOut = out;
+//                    break;
+//                }
+//            }
+//
+//            if (checkOut != null) {
+//                BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(checkIn.getCheckInDateTime(), checkOut.getCheckOutDateTime()).toMinutes())
+//                        .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+//                totalWorkedHours = totalWorkedHours.add(hoursWorked);
+//            }
+//        }
+//        return totalWorkedHours;
+//    }
+private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
+    BigDecimal totalWorkedHours = BigDecimal.ZERO;
+    for (int i = 0; i < checkIns.size(); i++) {
+        CheckIn checkIn = checkIns.get(i);
+        CheckOut checkOut = null;
 
-            // Find the first check-out after this check-in
-            for (CheckOut out : checkOuts) {
-                if (!out.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime())) {
-                    checkOut = out;
-                    break;
-                }
-            }
-
-            if (checkOut != null) {
-                BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(checkIn.getCheckInDateTime(), checkOut.getCheckOutDateTime()).toMinutes())
-                        .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-                totalWorkedHours = totalWorkedHours.add(hoursWorked);
+        // Find the first check-out after this check-in
+        for (CheckOut out : checkOuts) {
+            if (!out.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime())) {
+                checkOut = out;
+                break;
             }
         }
-        return totalWorkedHours;
+
+        if (checkOut != null) {
+            BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(checkIn.getCheckInDateTime(), checkOut.getCheckOutDateTime()).toMinutes())
+                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            totalWorkedHours = totalWorkedHours.add(hoursWorked);
+        }
     }
+    return totalWorkedHours;
+}
 
     //    private BigDecimal calculateWorkedHours(Long employeeId, LocalDateTime startDateTime, LocalDateTime endDateTime) {
 //        List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
