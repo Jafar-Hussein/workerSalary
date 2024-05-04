@@ -9,6 +9,8 @@ import com.example.examen.model.User;
 import com.example.examen.repo.CheckInRepo;
 import com.example.examen.repo.CheckOutRepo;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CheckoutService {
+    private static final Logger logger = LoggerFactory.getLogger(CheckoutService.class);
     private final CheckOutRepo checkOutRepo;
     private final UserService userService;
     private final EmployeeService employeeService;
@@ -35,21 +38,29 @@ public class CheckoutService {
     // In CheckoutService class
     @Transactional
     public void checkOut() {
-        User user = userService.getCurrentUser();
-        if (user != null && user.getEmployee() != null) {
-            LocalDateTime now = LocalDateTime.now();
-            // Ensure a Salary entry for the new month exists before saving the check-out
-            salaryService.findOrCreateSalaryByEmployeeIdAndMonth(user.getEmployee().getId(), YearMonth.from(now));
+        try {
+            User user = userService.getCurrentUser();
+            if (user != null && user.getEmployee() != null) {
+                LocalDateTime now = LocalDateTime.now();
+                // Ensure a Salary entry for the new month exists before saving the check-out
+                salaryService.findOrCreateSalaryByEmployeeIdAndMonth(user.getEmployee().getId(), YearMonth.from(now));
 
-            CheckOut checkOut = new CheckOut();
-            checkOut.setEmployee(user.getEmployee());
-            checkOut.setCheckOutDateTime(now);
-            checkOutRepo.save(checkOut);
+                CheckOut checkOut = new CheckOut();
+                checkOut.setEmployee(user.getEmployee());
+                checkOut.setCheckOutDateTime(now);
+                checkOutRepo.save(checkOut);
 
-            // Now, just call the updated method without parameters
-            salaryService.updateWorkedHoursAndRecalculateSalary(user.getEmployee().getId());
-        } else {
-            throw new IllegalArgumentException("User or associated employee not found");
+                // Update worked hours and recalculate salary
+                salaryService.updateWorkedHoursAndRecalculateSalary(user.getEmployee().getId());
+            } else {
+                throw new IllegalArgumentException("User or associated employee not found");
+            }
+        } catch (IllegalArgumentException e) {
+            logger.error("Validation error during checkout process: {}", e.getMessage());
+            throw e;  // Re-throw to be handled or logged by the caller/controller
+        } catch (Exception e) {
+            logger.error("Error during checkout process", e);
+            throw new RuntimeException("Internal server error during checkout", e);
         }
     }
 
