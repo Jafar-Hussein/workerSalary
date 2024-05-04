@@ -46,26 +46,44 @@ class SalaryServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
     }
+
     @Test
     void setSalaryDetails_Success() {
         Long employeeId = 1L;
         SalaryDTO salaryDTO = new SalaryDTO();
-        salaryDTO.setHourlyRate(new BigDecimal("25.00"));
+        salaryDTO.setHourlyRate(new BigDecimal("30.00"));
         salaryDTO.setWorkedHours(160);
-        salaryDTO.setTotalSalary(new BigDecimal("4000.00"));
-        YearMonth month = YearMonth.of(2024, 4);
+        salaryDTO.setTotalSalary(new BigDecimal("4800.00"));
+        YearMonth currentMonth = YearMonth.now(); // Use the current month for the test
+        salaryDTO.setMonth(currentMonth); // Ensure the month is set on the DTO
 
-        Salary salary = new Salary();
-        when(salaryRepo.findByEmployeeIdAndMonth(employeeId, month)).thenReturn(Optional.of(salary));
+        Employee employee = new Employee();
+        employee.setId(employeeId);
+        Salary salary = new Salary(); // Create a Salary object to be returned by the mock
+        salary.setEmployee(employee);
+        salary.setMonth(currentMonth);
+
+        // Mock the employee and salary finding behavior
+        when(employeeRepo.findById(employeeId)).thenReturn(Optional.of(employee));
+        when(salaryRepo.findByEmployeeIdAndMonth(employeeId, currentMonth)).thenReturn(Optional.empty()); // Simulate not finding the salary
         when(salaryRepo.save(any(Salary.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // Mock the findOrCreateSalaryByEmployeeIdAndMonth behavior
+        when(salaryService.findOrCreateSalaryByEmployeeIdAndMonth(employeeId, currentMonth)).thenReturn(salary);
+
+        // Call the method under test
         salaryService.setSalaryDetails(employeeId, salaryDTO);
 
-        verify(salaryRepo).save(salary);
-        assertEquals(new BigDecimal("4000.00"), salary.getTotalSalary());
+        // Verify that the salary details are set as expected
+        assertEquals(new BigDecimal("4800.00"), salary.getTotalSalary());
         assertEquals(160, salary.getWorkedHours());
-        assertEquals(new BigDecimal("25.00"), salary.getHourlyRate());
+        assertEquals(new BigDecimal("30.00"), salary.getHourlyRate());
+
+        // Verify that the save method was called
+        verify(salaryRepo).save(salary);
     }
+
+
     @Test
     void getCurrentMonthSalary_Success() {
         User user = new User();
