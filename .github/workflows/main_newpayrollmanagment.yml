@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy JAR app to Azure Web App - PayRollManagment
+name: Build and deploy JAR app to Azure Web App - NewPayRollManagment
 
 on:
   push:
@@ -48,15 +48,15 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_94AE8740FD7945BEA813D47C1B1AA5D9 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1361B5B6A0EC4275BFD713AD1181708A }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1F1BC008E3D04E73A6F2752DA53C5464 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_17AC44821791419481B4DB0E64930E8E }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E3832593239D4A069FE95449F214BE0E }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FEA42AF8442C4585A8CD47766A8F4BBB }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'PayRollManagment'
+          app-name: 'NewPayRollManagment'
           slot-name: 'Production'
           package: '*.jar'
           
