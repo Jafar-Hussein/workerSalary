@@ -19,9 +19,16 @@ public class CheckOutController {
     // check out
     @PostMapping("/")
     public ResponseEntity<?> checkOut() {
-        checkOutService.checkOut();
-        return ResponseEntity.ok("Checked out successfully");
+        try {
+            checkOutService.checkOut();
+            return ResponseEntity.ok("Checked out successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error during checkout");
+        }
     }
+
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAllEmployeeCheckOuts() {
