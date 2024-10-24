@@ -30,78 +30,76 @@ import org.springframework.security.web.SecurityFilterChain;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
+@EnableWebSecurity // Aktiverar Spring Security för webbapplikationen
+@EnableMethodSecurity // Möjliggör säkerhet på metodnivå
 public class SecurityConfig {
 
     private final KeyProperties keys;
 
+    // Konstruktor för att injicera nycklar för JWT
     public SecurityConfig(KeyProperties keys) {
         this.keys = keys;
     }
 
-    //Konfigurera lösenordskryptering
+    // Konfigurera lösenordskryptering med BCryptPasswordEncoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // Konfigurera autentisering
+    // Konfigurera autentisering med användardetaljer och lösenordskryptering
     @Bean
     public AuthenticationManager authManager(UserDetailsService detailsService) {
         DaoAuthenticationProvider daoProvider = new DaoAuthenticationProvider();
-        daoProvider.setUserDetailsService(detailsService);
-        daoProvider.setPasswordEncoder(passwordEncoder());
-        return new ProviderManager(daoProvider);
+        daoProvider.setUserDetailsService(detailsService); // Sätt UserDetailsService för att ladda användardetaljer
+        daoProvider.setPasswordEncoder(passwordEncoder()); // Sätt PasswordEncoder till BCrypt
+        return new ProviderManager(daoProvider); // Skapa en autentiseringshanterare
     }
 
-    // Konfigurera säkerhetsfilterkedjan
+    // Konfigurera säkerhetsfilterkedjan för HTTP-säkerhet och resursåtkomst
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // Inaktiverar CSRF-skydd för enkel API-hantering
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/auth/**").permitAll();
-                    auth.requestMatchers("/admin/**").hasRole("ADMIN");
-                    auth.requestMatchers("/user/**").hasAnyRole("ADMIN", "USER");
-                    auth.requestMatchers("/check-in/**").hasAnyRole("ADMIN", "USER");
-                    auth.requestMatchers("/check-out/**").hasAnyRole("ADMIN", "USER");
-                    auth.requestMatchers("/employee/**").hasAnyRole("ADMIN", "USER");
-                    auth.requestMatchers("/salary/**").hasAnyRole("ADMIN", "USER");
-                    auth.requestMatchers("/leave-request/**").hasAnyRole("ADMIN", "USER");
-
-                    auth.anyRequest().authenticated();
+                    auth.requestMatchers("/auth/**").permitAll(); // Tillåt åtkomst till autentiseringsrelaterade endpoints
+                    auth.requestMatchers("/admin/**").hasRole("ADMIN"); // Endast administratörer kan komma åt admin endpoints
+                    auth.requestMatchers("/user/**").hasAnyRole("ADMIN", "USER"); // Tillåt både användare och admin
+                    auth.requestMatchers("/check-in/**").hasAnyRole("ADMIN", "USER"); // Check-in tillgänglig för användare och admin
+                    auth.requestMatchers("/check-out/**").hasAnyRole("ADMIN", "USER"); // Check-out för användare och admin
+                    auth.requestMatchers("/employee/**").hasAnyRole("ADMIN", "USER"); // Endpoints för anställda
+                    auth.requestMatchers("/salary/**").hasAnyRole("ADMIN", "USER"); // Löneendpoints tillgängliga för båda
+                    auth.requestMatchers("/leave-request/**").hasAnyRole("ADMIN", "USER"); // Ledighetsansökningar för båda roller
+                    auth.anyRequest().authenticated(); // Alla andra requests kräver autentisering
                 })
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(withDefaults())
-                )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .httpBasic(withDefaults())
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults())) // Konfigurera JWT som autentiseringsmetod
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Ingen session hanteras, stateless JWT
+                .httpBasic(withDefaults()) // Aktivera grundläggande HTTP-autentisering
                 .build();
     }
 
-    // Konfigurera JWT-dekoder
+    // Konfigurera JWT-dekodning för att validera JWT-tokens
     @Bean
     public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withPublicKey(keys.getPublicKey()).build();
+        return NimbusJwtDecoder.withPublicKey(keys.getPublicKey()).build(); // Använd den offentliga nyckeln för att dekoda JWT
     }
 
-    // Konfigurera JWT-kodare
+    // Konfigurera JWT-kodare för att skapa JWT-tokens med privat nyckel
     @Bean
     public JwtEncoder jwtEncoder() {
-        JWK jwk = new RSAKey.Builder(keys.getPublicKey()).privateKey(keys.getPrivateKey()).build();
-        JWKSource<SecurityContext> jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
-        return new NimbusJwtEncoder(jwks);
+        JWK jwk = new RSAKey.Builder(keys.getPublicKey()).privateKey(keys.getPrivateKey()).build(); // Bygg en RSA-nyckel för JWT
+        JWKSource<SecurityContext> jwks = new ImmutableJWKSet<>(new JWKSet(jwk)); // Skapa en immutabel JWKSet med nyckeln
+        return new NimbusJwtEncoder(jwks); // Använd NimbusJwtEncoder för att koda JWT
     }
 
-    // Konfigurera JWT-autentiseringsomvandlare
+    // Konfigurera JWT-autentiseringsomvandlare för att hämta roller från JWT
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        jwtGrantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
-        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+        jwtGrantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // Definiera claim där roller finns i JWT
+        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("ROLE_"); // Prefix för roller, t.ex. "ROLE_USER"
         JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
-        jwtConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
+        jwtConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter); // Sätt konverteraren för att hämta roller
         return jwtConverter;
     }
 

@@ -18,44 +18,41 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // Skapar en konstruktor för att automatiskt injicera beroenden
 public class SalaryService {
-    private final SalaryRepo salaryRepo;
-    private final EmployeeRepo employeeRepo;
-    private final CheckInRepo checkInRepo;
-    private final CheckOutRepo checkOutRepo;
-    private final UserService userService;
+    private final SalaryRepo salaryRepo; // Repository för att hantera Salary-databasoperationer
+    private final EmployeeRepo employeeRepo; // Repository för att hantera Employee-databasoperationer
+    private final CheckInRepo checkInRepo; // Repository för att hantera CheckIn-databasoperationer
+    private final CheckOutRepo checkOutRepo; // Repository för att hantera CheckOut-databasoperationer
+    private final UserService userService; // Tjänst för att hantera användarrelaterade operationer
 
-
+    // Sätt löneinformation för en specifik anställd
     public void setSalaryDetails(Long employeeId, SalaryDTO salaryDTO) {
-        // Check if the month is provided in the DTO, if not set it to the current month and year
+        // Om ingen månad anges, sätt den till nuvarande månad
         if (salaryDTO.getMonth() == null) {
             salaryDTO.setMonth(YearMonth.now());
         }
 
+        // Hitta eller skapa en lönepost för den anställda och den angivna månaden
         Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, salaryDTO.getMonth());
-        salary.setHourlyRate(salaryDTO.getHourlyRate() != null ? salaryDTO.getHourlyRate() : BigDecimal.ZERO); // Fallback to 0 if null
-        salary.setWorkedHours(salaryDTO.getWorkedHours() != null ? salaryDTO.getWorkedHours() : 0); // Fallback to 0 if null
-        // For totalSalary, consider if you want to recalculate it here based on hourlyRate and workedHours,
-        // or if you want to directly use the provided value (if any).
-        salary.setTotalSalary(salaryDTO.getTotalSalary() != null ? salaryDTO.getTotalSalary() : BigDecimal.ZERO); // Fallback to 0 if null
-        salaryRepo.save(salary);
+        salary.setHourlyRate(salaryDTO.getHourlyRate() != null ? salaryDTO.getHourlyRate() : BigDecimal.ZERO); // Fallback till 0 om null
+        salary.setWorkedHours(salaryDTO.getWorkedHours() != null ? salaryDTO.getWorkedHours() : 0); // Fallback till 0 om null
+        salary.setTotalSalary(salaryDTO.getTotalSalary() != null ? salaryDTO.getTotalSalary() : BigDecimal.ZERO); // Fallback till 0 om null
+        salaryRepo.save(salary); // Spara löneposten i databasen
     }
 
-
+    // Hämta aktuell månadslön för nuvarande användare
     public SalaryDTO getCurrentMonthSalary() {
         User user = userService.getCurrentUser();
         if (user == null || user.getEmployee() == null) {
             throw new IllegalArgumentException("Current user is not logged in or does not have an associated employee.");
         }
         Long employeeId = user.getEmployee().getId();
-
         Employee employee = employeeRepo.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found with ID: " + employeeId));
 
@@ -63,10 +60,10 @@ public class SalaryService {
         Salary salary = salaryRepo.findByEmployeeAndMonth(employee, currentMonth)
                 .orElseThrow(() -> new IllegalArgumentException("Salary not found for employee ID: " + employeeId + " and current month"));
 
-        return mapSalaryToDTO(salary);
+        return mapSalaryToDTO(salary); // Konvertera Salary till SalaryDTO och returnera
     }
 
-
+    // Hämta tidigare löner för en specifik anställd
     public List<SalaryDTO> getPastSalaries(Long employeeId) {
         Employee employee = employeeRepo.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found with ID: " + employeeId));
@@ -74,13 +71,12 @@ public class SalaryService {
         List<Salary> salaries = salaryRepo.findAllByEmployee(employee);
         return salaries.stream()
                 .map(this::mapSalaryToDTO)
-                .filter(dto -> dto.getMonth() != null)  // Filter out any DTOs with null months
-                .sorted(Comparator.comparing(SalaryDTO::getMonth, Comparator.nullsLast(YearMonth::compareTo)).reversed())
+                .filter(dto -> dto.getMonth() != null)  // Filtrera bort DTOs med null-månad
+                .sorted(Comparator.comparing(SalaryDTO::getMonth, Comparator.nullsLast(YearMonth::compareTo)).reversed()) // Sortera i omvänd ordning
                 .collect(Collectors.toList());
     }
 
-
-
+    // Mappa en Salary-entitet till en SalaryDTO
     private SalaryDTO mapSalaryToDTO(Salary salary) {
         SalaryDTO salaryDTO = new SalaryDTO();
         salaryDTO.setHourlyRate(salary.getHourlyRate());
@@ -89,251 +85,73 @@ public class SalaryService {
         salaryDTO.setMonth(salary.getMonth());
         return salaryDTO;
     }
-    //update hourly rate
+
+    // Uppdatera timlön för en anställd för den aktuella månaden
     public ResponseEntity<?> updateHourlyRate(Long employeeId, BigDecimal hourlyRate) {
         Salary salary = salaryRepo.findByEmployeeIdAndMonth(employeeId, YearMonth.now())
                 .orElseThrow(() -> new IllegalArgumentException("Salary not found for employee ID: " + employeeId + " and current month"));
 
-        salary.setHourlyRate(hourlyRate);
-        salaryRepo.save(salary);
+        salary.setHourlyRate(hourlyRate); // Uppdatera timlönen
+        salaryRepo.save(salary); // Spara uppdateringen i databasen
         return ResponseEntity.ok("Hourly rate updated successfully");
     }
 
-//    @Transactional
-//    public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
-//        // Calculate from the start of the current month up to the last check-out before now
-//        LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay();
-//        LocalDateTime endDateTime = LocalDateTime.now();
-//
-//        // Find or create the salary record for the employee for the given month.
-//        Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
-//
-//        // Fetch check-ins and check-outs for the employee within the specified datetime range.
-//        List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
-//        List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
-//
-//        // Assuming that checkIns and checkOuts are matched one-to-one by their indices
-//        BigDecimal totalWorkedHours = calculateTotalWorkedHours(checkIns, checkOuts);
-//
-//        // Calculate the total salary
-//        BigDecimal hourlyRate = salary.getHourlyRate();
-//        BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
-//
-//        // Update the salary record with the calculated total salary
-//        salary.setTotalSalary(totalSalary);
-//
-//        // Update the salary record with the calculated total worked hours
-//        salary.setWorkedHours(totalWorkedHours.intValue());
-//
-//        salaryRepo.save(salary);
-//    }
+    // Uppdatera arbetade timmar och räkna om lön för en anställd
+    @Transactional
+    public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
+        LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay(); // Början av månaden
+        LocalDateTime endDateTime = LocalDateTime.now(); // Nuvarande tid
+        Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
 
-//    @Transactional
-//    public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
-//        // Calculate from the start of the current month up to the last check-out before now
-//        LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay();
-//        LocalDateTime endDateTime = LocalDateTime.now();
-//
-//        // Find or create the salary record for the employee for the given month.
-//        Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
-//
-//        // Fetch check-ins and check-outs for the employee within the specified datetime range.
-//        List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
-//        List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
-//
-//        // Ensure checkIns and checkOuts are sorted
-//        checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
-//        checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
-//
-//        BigDecimal totalWorkedHours = BigDecimal.ZERO;
-//        for (CheckIn checkIn : checkIns) {
-//            // Find corresponding check-out
-//            Optional<CheckOut> matchingCheckOut = checkOuts.stream()
-//                    .filter(co -> !co.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime()))
-//                    .findFirst();
-//
-//            if (matchingCheckOut.isPresent()) {
-//                // Calculate hours worked between the check-in and check-out
-//                BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(
-//                                checkIn.getCheckInDateTime(),
-//                                matchingCheckOut.get().getCheckOutDateTime()
-//                        ).toHours())
-//                        .setScale(2, RoundingMode.HALF_UP);
-//                totalWorkedHours = totalWorkedHours.add(hoursWorked);
-//
-//                // Remove the matched check-out to prevent reprocessing
-//                checkOuts.remove(matchingCheckOut.get());
-//            }
-//        }
-//
-//        // Calculate the total salary
-//        BigDecimal hourlyRate = salary.getHourlyRate();
-//        BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
-//
-//        // Update the salary record with the calculated total salary and worked hours
-//        salary.setTotalSalary(totalSalary);
-//        salary.setWorkedHours(totalWorkedHours.intValue());
-//
-//        salaryRepo.save(salary);
-//    }
-@Transactional
-public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
-    LocalDateTime startDateTime = YearMonth.now().atDay(1).atStartOfDay();
-    LocalDateTime endDateTime = LocalDateTime.now();
-    Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.from(startDateTime));
-
-    List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
-    List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
-
-    checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
-    checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
-
-    BigDecimal totalWorkedHours = BigDecimal.ZERO;
-
-    for (CheckIn checkIn : checkIns) {
-        Optional<CheckOut> matchingCheckOut = checkOuts.stream()
-                .filter(co -> !co.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime()))
-                .findFirst();
-
-        if (matchingCheckOut.isPresent()) {
-            long minutesBetween = Duration.between(checkIn.getCheckInDateTime(), matchingCheckOut.get().getCheckOutDateTime()).toMinutes();
-            BigDecimal hoursWorked = BigDecimal.valueOf(minutesBetween).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-            totalWorkedHours = totalWorkedHours.add(hoursWorked);
-            checkOuts.remove(matchingCheckOut.get());
-        }
-    }
-
-    BigDecimal hourlyRate = salary.getHourlyRate();
-    BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP);
-    salary.setTotalSalary(totalSalary);
-    salary.setWorkedHours(totalWorkedHours.intValue());
-
-    salaryRepo.save(salary);
-}
-
-//    private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
-//        BigDecimal totalWorkedHours = BigDecimal.ZERO;
-//        for (int i = 0; i < checkIns.size(); i++) {
-//            CheckIn checkIn = checkIns.get(i);
-//            CheckOut checkOut = null;
-//
-//            // Find the first check-out after this check-in
-//            for (CheckOut out : checkOuts) {
-//                if (!out.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime())) {
-//                    checkOut = out;
-//                    break;
-//                }
-//            }
-//
-//            if (checkOut != null) {
-//                BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(checkIn.getCheckInDateTime(), checkOut.getCheckOutDateTime()).toMinutes())
-//                        .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-//                totalWorkedHours = totalWorkedHours.add(hoursWorked);
-//            }
-//        }
-//        return totalWorkedHours;
-//    }
-//private BigDecimal calculateTotalWorkedHours(List<CheckIn> checkIns, List<CheckOut> checkOuts) {
-//    BigDecimal totalWorkedHours = BigDecimal.ZERO;
-//    for (int i = 0; i < checkIns.size(); i++) {
-//        CheckIn checkIn = checkIns.get(i);
-//        CheckOut checkOut = null;
-//
-//        // Find the first check-out after this check-in
-//        for (CheckOut out : checkOuts) {
-//            if (!out.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime())) {
-//                checkOut = out;
-//                break;
-//            }
-//        }
-//
-//        if (checkOut != null) {
-//            BigDecimal hoursWorked = BigDecimal.valueOf(Duration.between(checkIn.getCheckInDateTime(), checkOut.getCheckOutDateTime()).toMinutes())
-//                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-//            totalWorkedHours = totalWorkedHours.add(hoursWorked);
-//        }
-//    }
-//    return totalWorkedHours;
-//}
-
-    private BigDecimal calculateWorkedHours(Long employeeId, LocalDateTime startDateTime, LocalDateTime endDateTime) {
         List<CheckIn> checkIns = checkInRepo.findByEmployeeIdAndCheckInDateTimeBetween(employeeId, startDateTime, endDateTime);
         List<CheckOut> checkOuts = checkOutRepo.findByEmployeeIdAndCheckOutDateTimeBetween(employeeId, startDateTime, endDateTime);
 
+        // Sortera check-ins och check-outs efter tid
         checkIns.sort(Comparator.comparing(CheckIn::getCheckInDateTime));
         checkOuts.sort(Comparator.comparing(CheckOut::getCheckOutDateTime));
 
         BigDecimal totalWorkedHours = BigDecimal.ZERO;
-        int checkOutIndex = 0;
-        Map<CheckOut, Boolean> matchedCheckOuts = new HashMap<>();
 
         for (CheckIn checkIn : checkIns) {
-            LocalDateTime checkInTime = checkIn.getCheckInDateTime();
-            BigDecimal hoursBetween = BigDecimal.ZERO;
+            Optional<CheckOut> matchingCheckOut = checkOuts.stream()
+                    .filter(co -> !co.getCheckOutDateTime().isBefore(checkIn.getCheckInDateTime()))
+                    .findFirst();
 
-            while (checkOutIndex < checkOuts.size()) {
-                CheckOut checkOut = checkOuts.get(checkOutIndex);
-                LocalDateTime checkOutTime = checkOut.getCheckOutDateTime();
-
-                if (checkOutTime.isAfter(checkInTime) && !matchedCheckOuts.containsKey(checkOut)) {
-                    // Use toMinutes() for a more precise duration calculation
-                    hoursBetween = BigDecimal.valueOf(Duration.between(checkInTime, checkOutTime).toMinutes())
-                            .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-                    matchedCheckOuts.put(checkOut, true);
-                    break;
-                }
-                checkOutIndex++;
+            if (matchingCheckOut.isPresent()) {
+                long minutesBetween = Duration.between(checkIn.getCheckInDateTime(), matchingCheckOut.get().getCheckOutDateTime()).toMinutes();
+                BigDecimal hoursWorked = BigDecimal.valueOf(minutesBetween).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+                totalWorkedHours = totalWorkedHours.add(hoursWorked);
+                checkOuts.remove(matchingCheckOut.get()); // Ta bort matchad check-out
             }
-            totalWorkedHours = totalWorkedHours.add(hoursBetween);
         }
-        return totalWorkedHours;
+
+        BigDecimal hourlyRate = salary.getHourlyRate();
+        BigDecimal totalSalary = hourlyRate.multiply(totalWorkedHours).setScale(2, RoundingMode.HALF_UP); // Beräkna total lön
+        salary.setTotalSalary(totalSalary);
+        salary.setWorkedHours(totalWorkedHours.intValue());
+
+        salaryRepo.save(salary); // Spara den uppdaterade löneposten
     }
 
-
-
+    // Hjälpmetod för att hitta eller skapa en Salary-post baserat på anställd ID och månad
     public Salary findOrCreateSalaryByEmployeeIdAndMonth(Long employeeId, YearMonth month) {
         return salaryRepo.findByEmployeeIdAndMonth(employeeId, month)
                 .orElseGet(() -> {
                     Employee employee = employeeRepo.findById(employeeId)
                             .orElseThrow(() -> new IllegalArgumentException("Employee not found with id: " + employeeId));
-                    // Fetch the most recent salary record for the employee to get the latest hourly rate
                     Salary mostRecentSalary = salaryRepo.findTopByEmployeeIdOrderByMonthDesc(employeeId).orElse(null);
-                    BigDecimal lastHourlyRate = (mostRecentSalary != null) ? mostRecentSalary.getHourlyRate() : BigDecimal.ZERO; // Fallback to ZERO if no records are found
+                    BigDecimal lastHourlyRate = (mostRecentSalary != null) ? mostRecentSalary.getHourlyRate() : BigDecimal.ZERO; // Använd senaste timlön eller 0
 
                     Salary newSalary = new Salary();
                     newSalary.setEmployee(employee);
                     newSalary.setMonth(month);
                     newSalary.setWorkedHours(0);
-                    newSalary.setHourlyRate(lastHourlyRate); // Use the last known hourly rate
-                    return salaryRepo.save(newSalary);
+                    newSalary.setHourlyRate(lastHourlyRate); // Använd senaste timlön
+                    return salaryRepo.save(newSalary); // Spara den nya löneposten
                 });
     }
 
-//
-//    @Transactional
-//    public void recalculateWorkedHoursAndSalary(Long employeeId, LocalDateTime oldDateTime, LocalDateTime newDateTime, boolean isCheckIn) {
-//        // Fetch the latest salary record or create a new one if it doesn't exist
-//        Salary salary = findOrCreateSalaryByEmployeeIdAndMonth(employeeId, YearMonth.now());
-//
-//        // Calculate the difference in worked hours caused by the adjustment
-//        BigDecimal workedHoursDifference = calculateWorkedHoursDifference(employeeId, oldDateTime, newDateTime, isCheckIn);
-//
-//        // Adjust the worked hours. We need to ensure that we never set a negative number of worked hours.
-//        BigDecimal currentWorkedHours = BigDecimal.valueOf(salary.getWorkedHours() != null ? salary.getWorkedHours() : 0);
-//        BigDecimal newWorkedHours = currentWorkedHours.add(workedHoursDifference).max(BigDecimal.ZERO);
-//
-//        salary.setWorkedHours(newWorkedHours.intValue());
-//
-//        // Recalculate salary based on new worked hours. Ensure hourlyRate is not null.
-//        BigDecimal hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : BigDecimal.ZERO;
-//        BigDecimal newTotalSalary = newWorkedHours.multiply(hourlyRate).setScale(2, RoundingMode.HALF_UP);
-//
-//        salary.setTotalSalary(newTotalSalary);
-//
-//        // Persist the updated salary
-//        salaryRepo.save(salary);
-//    }
-
+    // Beräkna skillnad i arbetade timmar om en in-/utcheckningstid ändras
     @Transactional
     public BigDecimal calculateWorkedHoursDifference(Long checkInId, LocalDateTime oldDateTime, LocalDateTime newDateTime, boolean isCheckIn) {
         BigDecimal hoursDifference;
@@ -341,28 +159,20 @@ public void updateWorkedHoursAndRecalculateSalary(Long employeeId) {
         if (isCheckIn) {
             CheckIn checkIn = checkInRepo.findById(checkInId)
                     .orElseThrow(() -> new IllegalStateException("Check-in record not found"));
-            // Perform necessary calculations using checkIn and possibly checkOutRepo
-            // Example placeholder logic for hours calculation:
             long durationInMinutes = ChronoUnit.MINUTES.between(oldDateTime, newDateTime);
             hoursDifference = BigDecimal.valueOf(durationInMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
         } else {
             CheckOut checkOut = checkOutRepo.findById(checkInId)
                     .orElseThrow(() -> new IllegalStateException("Check-out record not found"));
-            // Perform necessary calculations using checkOut and possibly checkInRepo
-            // Example placeholder logic for hours calculation:
             long durationInMinutes = ChronoUnit.MINUTES.between(oldDateTime, newDateTime);
             hoursDifference = BigDecimal.valueOf(durationInMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
         }
 
-        // Depending on whether newDateTime is after or before oldDateTime, you may need to negate this value
+        // Negera värdet om den nya tiden är tidigare än den gamla
         if (newDateTime.isBefore(oldDateTime)) {
             hoursDifference = hoursDifference.negate();
         }
 
         return hoursDifference;
     }
-
-
-
-
 }

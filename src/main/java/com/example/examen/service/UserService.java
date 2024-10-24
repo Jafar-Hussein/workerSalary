@@ -24,11 +24,15 @@ public class UserService implements UserDetailsService {
         //returnerar användaren
         return userOptional.orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
     }
+    //Metod för att hämta användare från databasen
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        //optional för att hämta användare från databasen med användarnamn och om användaren inte finns kastas ett fel
         Optional<User> optionalUser = userRepo.findByUsername(username);
+        //returnerar användaren om den finns
         if(optionalUser.isPresent()){
             return optionalUser.get();
+            //annars kastas ett fel
         }else {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }

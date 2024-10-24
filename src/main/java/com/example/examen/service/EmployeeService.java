@@ -22,156 +22,140 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // Skapar en konstruktor för att automatiskt injicera beroenden
 public class EmployeeService {
-    private final EmployeeRepo employeeRepo;
-    private final UserRepo userRepo;
-    private final SalaryRepo salaryRepo;
-    private final UserService userService;
-    private final ModelMapper modelMapper;
+    private final EmployeeRepo employeeRepo; // Repository för att hantera Employee-databasoperationer
+    private final UserRepo userRepo; // Repository för att hantera User-databasoperationer
+    private final SalaryRepo salaryRepo; // Repository för att hantera Salary-databasoperationer
+    private final UserService userService; // Tjänst för att hantera användarrelaterade operationer
+    private final ModelMapper modelMapper; // Används för att konvertera mellan entiteter och DTO-objekt
 
-    // for admin
+    // För admin: Spara anställds information baserat på användarnamn
     public ResponseEntity<?> saveEmployeeInfoByUsername(String username, EmployeeDTO employeeDTO) {
         User user = userRepo.findByUsername(username).orElse(null);
 
         if (user != null) {
-            Employee employee = convertDtoToEntity(employeeDTO);
-            employee.setUser(user); // Make sure the Employee knows about its User
+            Employee employee = convertDtoToEntity(employeeDTO); // Konvertera DTO till entitet
+            employee.setUser(user); // Koppla Employee till dess User
             Employee savedEmployee = employeeRepo.save(employee);
 
-            user.setEmployee(savedEmployee); // Update the User to reference the saved Employee
-            userRepo.save(user); // Save the User entity to update the relationship in the database
+            user.setEmployee(savedEmployee); // Uppdatera User att referera till den sparade Employee
+            userRepo.save(user); // Spara User-objektet i databasen
 
             return ResponseEntity.ok("Employee info saved successfully");
         }
         return ResponseEntity.badRequest().body("User not found");
     }
 
+    // Hämta nuvarande användares anställdinformation
+    public ResponseEntity<?> getCurrentUserEmployeeInfo() {
+        User user = userService.getCurrentUser(); // Hämta nuvarande inloggade användare
+        if (user != null) {
+            Employee employee = user.getEmployee(); // Hämta Employee kopplad till användaren
+            if (employee != null) {
+                // Konvertera Employee-entiteten till EmployeeDTO
+                EmployeeDTO employeeDTO = modelMapper.map(employee, EmployeeDTO.class);
+                return ResponseEntity.ok(employeeDTO); // Returnera EmployeeDTO
+            } else {
+                return ResponseEntity.badRequest().body("Current user does not have associated employee information.");
+            }
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found or not logged in.");
+    }
 
-  // get current user employee info
-  public ResponseEntity<?> getCurrentUserEmployeeInfo() {
-      User user = userService.getCurrentUser();
-      if (user != null) {
-          Employee employee = user.getEmployee();
-          if (employee != null) {
-              // Convert Employee entity to EmployeeDTO
-              EmployeeDTO employeeDTO = modelMapper.map(employee, EmployeeDTO.class);
-              return ResponseEntity.ok(employeeDTO);
-          } else {
-              return ResponseEntity.badRequest().body("Current user does not have associated employee information.");
-          }
-      }
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found or not logged in.");
-  }
+    // Hämta alla anställdas information
+    public ResponseEntity<List<EmployeeDTO>> getAllEmployeesInfo() {
+        List<Employee> employees = employeeRepo.findAll(); // Hämta alla anställda från databasen
 
+        // Konvertera varje Employee till EmployeeDTO och samla dem i en lista
+        List<EmployeeDTO> employeeDTOs = employees.stream()
+                .map(employee -> modelMapper.map(employee, EmployeeDTO.class))
+                .collect(Collectors.toList());
 
-    // get all employees info
-  public ResponseEntity<List<EmployeeDTO>> getAllEmployeesInfo() {
-      // Fetch all employees from the database
-      List<Employee> employees = employeeRepo.findAll();
+        return ResponseEntity.ok(employeeDTOs); // Returnera listan med EmployeeDTOs
+    }
 
-      // Convert each employee entity to an EmployeeDTO
-      List<EmployeeDTO> employeeDTOs = employees.stream()
-              .map(employee -> modelMapper.map(employee, EmployeeDTO.class))
-              .collect(Collectors.toList());
-
-      // Return the list of EmployeeDTOs
-      return ResponseEntity.ok(employeeDTOs);
-  }
-  // get all employees info for admin
+    // För admin: Hämta alla anställdas information, inklusive löneuppgifter
     public ResponseEntity<List<AdminEmployeeDTO>> getAllEmployeesInfoForAdmin() {
-        // Fetch all employees from the database
-        List<Employee> employees = employeeRepo.findAll();
+        List<Employee> employees = employeeRepo.findAll(); // Hämta alla anställda från databasen
 
-        // Convert each employee entity to an AdminEmployeeDTO
+        // Konvertera varje Employee till AdminEmployeeDTO och hämta deras timlön om det finns
         List<AdminEmployeeDTO> adminEmployeeDTOs = employees.stream()
                 .map(employee -> {
                     AdminEmployeeDTO dto = modelMapper.map(employee, AdminEmployeeDTO.class);
                     BigDecimal hourlyRate = employee.getSalaries().isEmpty() ? null : employee.getSalaries().get(0).getHourlyRate();
-                    dto.setHourlyRate(hourlyRate);
+                    dto.setHourlyRate(hourlyRate); // Sätt timlönen om den finns
                     return dto;
                 })
                 .collect(Collectors.toList());
-        // Return the list of AdminEmployeeDTOs
-        return ResponseEntity.ok(adminEmployeeDTOs);
+
+        return ResponseEntity.ok(adminEmployeeDTOs); // Returnera listan med AdminEmployeeDTOs
     }
 
-  // employee update their own info
-// employee update their own info
-
+    // Anställd uppdaterar sin egen information
     public ResponseEntity<?> updateEmployeeInfo(EmployeeDTO employeeDTO) {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser(); // Hämta den aktuella inloggade användaren
         Employee existingEmployee = user.getEmployee();
         if (existingEmployee == null) {
             throw new RuntimeException("No employee information found for current user");
         }
 
-        // Here we ensure the model mapper does not map the id field
+        // Modellmappning exkluderar id-fältet vid uppdatering
         modelMapper.typeMap(EmployeeDTO.class, Employee.class)
                 .addMappings(mapper -> mapper.skip(Employee::setId));
 
-        // Perform the mapping, excluding the ID
-        modelMapper.map(employeeDTO, existingEmployee);
+        modelMapper.map(employeeDTO, existingEmployee); // Utför mappningen, exkludera id
 
-        // Save the updated employee entity
-        Employee updatedEmployee = employeeRepo.save(existingEmployee);
-        return ResponseEntity.ok(updatedEmployee);
+        Employee updatedEmployee = employeeRepo.save(existingEmployee); // Spara den uppdaterade anställda
+        return ResponseEntity.ok(updatedEmployee); // Returnera uppdaterad Employee
     }
 
-
-    // for admin
-    // for admin
+    // För admin: Uppdatera en anställds information och löneuppgifter
     public ResponseEntity<?> updateEmployeeInfoByAdmin(Long id, AdminEmployeeDTO adminEmployeeDTO) {
         Employee employee = employeeRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found with id " + id));
 
-        // Apply updates to the employee information from the AdminEmployeeDTO
+        // Mappa AdminEmployeeDTO till Employee-objektet
         modelMapper.map(adminEmployeeDTO, employee);
 
-        // Assuming you want to update the salary for the current month
+        // Uppdatera lönen för den aktuella månaden
         YearMonth currentMonth = YearMonth.now();
         Salary salary = employee.getSalaries().stream()
                 .filter(s -> s.getMonth().equals(currentMonth))
                 .findFirst()
                 .orElse(new Salary());
 
-        // Set or update salary details
+        // Sätt eller uppdatera lönedetaljer
         salary.setEmployee(employee);
-        salary.setMonth(currentMonth); // This assumes you're updating the salary for the current month
+        salary.setMonth(currentMonth);
         if (adminEmployeeDTO.getHourlyRate() != null) {
             salary.setHourlyRate(adminEmployeeDTO.getHourlyRate());
         }
 
-        // If this is a new salary object, add it to the employee's list of salaries
+        // Om det är en ny lönepost, lägg till den i anställdas lönelista
         if (salary.getId() == null) {
             employee.getSalaries().add(salary);
         }
 
-        salaryRepo.save(salary); // Save the updated or new salary record
+        salaryRepo.save(salary); // Spara den uppdaterade eller nya löneposten
 
-        // Save the employee to update the relationship
-        Employee updatedEmployee = employeeRepo.save(employee);
+        Employee updatedEmployee = employeeRepo.save(employee); // Spara den uppdaterade anställda
 
-        // Map both Employee and Salary information back to AdminEmployeeDTO
         AdminEmployeeDTO updatedAdminEmployeeDTO = modelMapper.map(updatedEmployee, AdminEmployeeDTO.class);
-        updatedAdminEmployeeDTO.setHourlyRate(salary.getHourlyRate()); // Ensure hourlyRate is set
+        updatedAdminEmployeeDTO.setHourlyRate(salary.getHourlyRate()); // Säkerställ att timlönen sätts
 
         return ResponseEntity.ok("Employee info updated successfully");
     }
 
-
-    // for admin
+    // För admin: Ta bort en anställd och den associerade användaren
     public ResponseEntity<?> deleteEmployeeAndUser(Long employeeId) {
-        // Attempt to find the employee by ID
         Optional<Employee> employeeOpt = employeeRepo.findById(employeeId);
         if (employeeOpt.isPresent()) {
             Employee employee = employeeOpt.get();
             User user = employee.getUser();
             if (user != null) {
-                // Delete the employee. The employee entity should not have any non-nullable foreign keys preventing deletion.
-                employeeRepo.delete(employee);
-                // Delete the user associated with the employee.
-                userRepo.delete(user);
+                employeeRepo.delete(employee); // Ta bort anställd
+                userRepo.delete(user); // Ta bort den associerade användaren
                 return ResponseEntity.ok().body("Employee and associated user deleted successfully.");
             } else {
                 return ResponseEntity.badRequest().body("No user associated with this employee.");
@@ -181,6 +165,7 @@ public class EmployeeService {
         }
     }
 
+    // Konvertera EmployeeDTO till Employee-entitet
     private Employee convertDtoToEntity(EmployeeDTO employeeDTO) {
         Employee employee = new Employee();
         employee.setFirstName(employeeDTO.getFirstName());

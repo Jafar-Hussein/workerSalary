@@ -16,43 +16,54 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // Skapar en konstruktor för att automatiskt injicera beroenden
 public class AuthService {
-    private final UserRepo userRepo;
-    private Roles role;
+    private final UserRepo userRepo; // Används för att interagera med databasen för användare
+    private Roles role; // Rollobjekt för att definiera användarens roll
 
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder; // Används för att kryptera lösenord
 
-    private final AuthenticationManager authenticationManager;
-    private final TokenService tokenService;
+    private final AuthenticationManager authenticationManager; // Hanterar autentisering av användare
+    private final TokenService tokenService; // Tjänst för att generera JWT-token
 
+    // Metod för att registrera en ny användare
     public ResponseEntity<?> register(AuthRequest authRequest){
         try{
+            // Kontrollera om användarnamnet redan finns i databasen
             Optional<User> existingUser = userRepo.findByUsername(authRequest.getUsername());
             if(existingUser.isPresent()){
+                // Returnera ett felmeddelande om användarnamnet redan är upptaget
                 return ResponseEntity.badRequest().body("Error: Username is already taken!");
             }
+            // Kryptera användarens lösenord
             String encryptedPassword = passwordEncoder.encode(authRequest.getPassword());
 
+            // Skapa en ny användare och ställ in användarnamn, lösenord och roll
             User user = new User();
             user.setUsername(authRequest.getUsername());
             user.setPassword(encryptedPassword);
-            user.setRole(role.USER);
-            userRepo.save(user);
-            return ResponseEntity.ok("User registered successfully!");
+            user.setRole(role.USER); // Sätt användarens roll som vanlig användare
+            userRepo.save(user); // Spara användaren i databasen
+            return ResponseEntity.ok("User registered successfully!"); // Returnera ett framgångsmeddelande
         }catch (Exception e){
+            // Returnera ett felmeddelande om något går fel
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
+    // Metod för att logga in en användare
     public ResponseEntity<ResponseMessage> login(AuthRequest authRequest){
         try {
+            // Autentisera användaren med användarnamn och lösenord
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
             );
+            // Generera en JWT-token för den autentiserade användaren
             String jwt = tokenService.generateJwt(auth);
+            // Returnera JWT-tokenen som svar
             return ResponseEntity.ok(new ResponseMessage(jwt));
         }catch (Exception e){
+            // Returnera ett felmeddelande om autentiseringen misslyckas
             return ResponseEntity.badRequest().body(new ResponseMessage("Error: " + e.getMessage()));
         }
     }

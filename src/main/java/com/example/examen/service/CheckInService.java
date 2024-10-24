@@ -3,10 +3,7 @@ package com.example.examen.service;
 import com.example.examen.adminDTO.CheckInInfoDTO;
 import com.example.examen.dto.CheckInAdjustmentDTO;
 import com.example.examen.dto.CheckInDTO;
-import com.example.examen.dto.CheckOutAdjustmentDTO;
-import com.example.examen.dto.CheckOutDTO;
 import com.example.examen.model.CheckIn;
-import com.example.examen.model.CheckOut;
 import com.example.examen.model.Roles;
 import com.example.examen.model.User;
 import com.example.examen.repo.CheckInRepo;
@@ -15,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
@@ -23,78 +19,77 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // Skapar en konstruktor för att automatiskt injicera beroenden
 public class CheckInService {
-    private final CheckInRepo checkInRepo;
-    private final UserService userService;
-    private final EmployeeService employeeService;
-    private final CheckOutRepo checkOutRepo;
-    private final SalaryService salaryService;
+    private final CheckInRepo checkInRepo; // Repository för att hantera CheckIn-databasoperationer
+    private final UserService userService; // Tjänst för att hantera användarrelaterade operationer
+    private final EmployeeService employeeService; // Tjänst för att hantera anställda
+    private final CheckOutRepo checkOutRepo; // Repository för att hantera CheckOut-databasoperationer
+    private final SalaryService salaryService; // Tjänst för att hantera löneberäkningar
 
-    //check in
-    // In CheckInService class
+    // Metod för att checka in en användare
     public void checkIn() {
+        // Hämta den aktuella inloggade användaren
         User user = userService.getCurrentUser();
         if (user != null && user.getEmployee() != null) {
-            LocalDateTime now = LocalDateTime.now();
-            // Ensure a Salary entry for the new month exists before saving the check-in
+            LocalDateTime now = LocalDateTime.now(); // Hämta aktuell tid
+            // Kontrollera om en lönepost redan finns för den aktuella månaden, annars skapa en
             salaryService.findOrCreateSalaryByEmployeeIdAndMonth(user.getEmployee().getId(), YearMonth.from(now));
 
+            // Skapa ett nytt CheckIn-objekt och spara det i databasen
             CheckIn checkIn = new CheckIn();
             checkIn.setEmployee(user.getEmployee());
-            checkIn.setCheckInDateTime(now); // Set the check-in time to the current time
-            checkInRepo.save(checkIn);
+            checkIn.setCheckInDateTime(now); // Sätt incheckningstiden till nuvarande tid
+            checkInRepo.save(checkIn); // Spara check-in i databasen
         } else {
-            throw new IllegalArgumentException("User or associated employee not found");
+            throw new IllegalArgumentException("User or associated employee not found"); // Kasta fel om användaren eller den associerade anställda inte finns
         }
     }
 
-
-
-    // Method to get all employee names and check-in comments
-    // for the admin dashboard
+    // Metod för att hämta alla anställdas namn och incheckningskommentarer för adminpanelen
     public List<CheckInInfoDTO> getAllEmployeeCheckIns() {
-        List<CheckIn> checkIns = checkInRepo.findAll();
+        List<CheckIn> checkIns = checkInRepo.findAll(); // Hämta alla incheckningar från databasen
 
+        // Konvertera varje CheckIn till ett CheckInInfoDTO-objekt och returnera som en lista
         return checkIns.stream().map(checkIn -> {
             CheckInInfoDTO dto = new CheckInInfoDTO();
             String fullName = checkIn.getEmployee().getFirstName() + " " + checkIn.getEmployee().getLastName();
-            dto.setEmployeeName(fullName);
-            dto.setCheckInTime(checkIn.getCheckInDateTime());
+            dto.setEmployeeName(fullName); // Sätt anställdas fullständiga namn
+            dto.setCheckInTime(checkIn.getCheckInDateTime()); // Sätt incheckningstiden
             return dto;
         }).collect(Collectors.toList());
     }
 
-    //user
+    // Metod för att hämta incheckningar baserat på den nuvarande inloggade anställdas ID
     public List<CheckInDTO> getCheckInsByEmployeeId() {
-        User user = userService.getCurrentUser();
+        User user = userService.getCurrentUser(); // Hämta den aktuella användaren
         if (user != null && user.getEmployee() != null) {
+            // Hämta alla incheckningar för den anställda och konvertera dem till DTO-objekt
             return checkInRepo.findAllByEmployeeId(user.getEmployee().getId()).stream()
                     .map(checkIn -> new CheckInDTO(checkIn.getId(), checkIn.getCheckInDateTime()))
                     .collect(Collectors.toList());
         } else {
-            throw new IllegalArgumentException("User or associated employee not found");
+            throw new IllegalArgumentException("User or associated employee not found"); // Kasta fel om användaren eller den associerade anställda inte finns
         }
-
     }
+
+    // Transaktionell metod för att justera incheckningstiden
     @Transactional
     public CheckIn adjustCheckInTime(Long checkInId, CheckInAdjustmentDTO adjustmentDTO) {
-        User currentUser = userService.getCurrentUser();
+        User currentUser = userService.getCurrentUser(); // Hämta den aktuella användaren
         CheckIn checkIn = checkInRepo.findById(checkInId)
-                .orElseThrow(() -> new IllegalArgumentException("CheckIn not found with id: " + checkInId));
+                .orElseThrow(() -> new IllegalArgumentException("CheckIn not found with id: " + checkInId)); // Hämta incheckningen eller kasta fel
 
+        // Kontrollera om användaren har behörighet att justera denna incheckning
         if (currentUser.isCheckInAdjustmentAllowed(checkIn)) {
-            checkIn.setCheckInDateTime(adjustmentDTO.getNewCheckInDateTime());
-            checkInRepo.save(checkIn);
+            checkIn.setCheckInDateTime(adjustmentDTO.getNewCheckInDateTime()); // Uppdatera incheckningstiden
+            checkInRepo.save(checkIn); // Spara ändringarna i databasen
 
-            // Call the updated method without date-time parameters
+            // Uppdatera arbetade timmar och räkna om lönen utan att använda datum-parametrar
             salaryService.updateWorkedHoursAndRecalculateSalary(checkIn.getEmployee().getId());
         } else {
-            throw new IllegalStateException("Unauthorized to adjust this check-in");
+            throw new IllegalStateException("Unauthorized to adjust this check-in"); // Kasta fel om användaren inte har behörighet
         }
         return checkIn;
     }
-
-
-
 }
